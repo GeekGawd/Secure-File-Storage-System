@@ -39,17 +39,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
     "authentication",
-    "core"
+    "core",
+    'django_otp',
+    'django_otp.plugins.otp_totp'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -158,16 +163,32 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'core.authentication.JWTAuthentication',
-    )
-}
-
 AUTH_USER_MODEL = 'authentication.User'
 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"http://localhost:.*",
+    r"http://127.0.0.1:.*"
+]
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'core.authentication.CustomJWTAuthentication',
+    ),
     'DEFAULT_RENDERER_CLASSES': (
         'core.rest_response_renderer.CustomJSONRenderer',
     )
 }
+
+CORS_ALLOW_CREDENTIALS = True
+
+# Django OTP Settings
+OTP_TOTP_SECONDS = 30
+OTP_TOTP_DIGITS = 6

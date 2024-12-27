@@ -52,8 +52,7 @@ class UserSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super(UserSerializer, self).to_representation(instance)
         user = instance
-        data["access"] = user.access()
-        data["refresh"] = user.refresh()
+        data["access"] = str(user.access())
 
         return data
 
@@ -77,8 +76,7 @@ class AuthTokenSerializer(serializers.ModelSerializer):
         )
 
         if not user:
-            raise ValidationError(
-                'Unable to authenticate with provided credentials')
+            pass
 
         return {
             'email': user.email,

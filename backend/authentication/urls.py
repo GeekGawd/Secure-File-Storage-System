@@ -1,8 +1,12 @@
 from django.urls import path
-from authentication.views import CreateUserView, LoginAPIView, HelloWorld
+from authentication.views import CreateUserView, CookieTokenObtainPairView, CookieTokenRefreshView, TOTPCreateView, TOTPVerifyView, HelloWorld, HelloWorldVerified
 
 urlpatterns = [
-    path('', HelloWorld.as_view(), name='hello'),
     path('register/', CreateUserView.as_view(), name='register'),
-    path('login/', LoginAPIView.as_view(), name='login'),
+    path('login/', CookieTokenObtainPairView.as_view(), name='login'),
+    path('refresh/', CookieTokenRefreshView.as_view(), name='refresh'),
+    path('totp/create/', TOTPCreateView.as_view(), name='totp-create'),
+    path('totp/verify/', TOTPVerifyView.as_view(), name='totp-verify'),
+    path('hello/', HelloWorld.as_view(), name='hello'),
+    path('hello-verified/', HelloWorldVerified.as_view(), name='hello-verified'),
 ]

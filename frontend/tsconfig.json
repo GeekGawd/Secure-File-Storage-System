@@ -7,6 +7,9 @@
       ]
     },
     "esModuleInterop": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "dom", "dom.iterable", "esnext"],
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node"
   }
 }

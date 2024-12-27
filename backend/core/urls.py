@@ -16,10 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from authentication.views import CreateUserView
+from authentication.views import HelloWorld
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/', include('authentication.urls')),
+    path('api/v1/', HelloWorld.as_view(), name='hello'),
+    path('api/v1/auth/', include('authentication.urls')),
 ]
