@@ -16,7 +16,6 @@ from django.conf import settings
 from core.constants import COOKIE_REFRESH_TOKEN_MAX_AGE
 from rest_framework_simplejwt.tokens import RefreshToken
 
-
 class HelloWorld(APIView):
     def get(self, request, *args, **kwargs):
         # Prepare your response data
@@ -137,7 +136,6 @@ class CookieTokenRefreshView(TokenRefreshView):
         if access_token:
             payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=['HS256'])
             response.data['email'] = payload['email']
-
         return response
 
 
