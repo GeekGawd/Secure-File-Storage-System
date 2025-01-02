@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
 import { selectCurrentAccessToken, setCredentials } from "@/store/auth/authSlice"
 import { useDispatch, useSelector } from "react-redux";
-import { redirect, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { LoginRedirect, JwtTokenObtainPair } from "@/api/routes/auth";
 import { ApiResponse } from "@/api";
 import { useEffect } from "react";
@@ -22,12 +22,12 @@ export function LoginForm({
   const navigate = useNavigate();
   const accessToken = useSelector(selectCurrentAccessToken);
 
-  // Move the redirect logic into useEffect
-  useEffect(() => {
-    if (accessToken) {
-      navigate("/home");
-    }
-  }, [accessToken, navigate]);
+  // // Move the redirect logic into useEffect
+  // useEffect(() => {
+  //   if (accessToken) {
+  //     navigate("/totp");
+  //   }
+  // }, [accessToken, navigate]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,7 +47,7 @@ export function LoginForm({
         accessToken: access,
       }));
 
-      navigate("/home");
+      navigate("/totp");
       // red
     }
     catch (error) {

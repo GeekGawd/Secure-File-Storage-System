@@ -28,6 +28,17 @@ export interface TotpVerifyBody {
     token: string;
 }
 
+export interface CreateUserBody {
+    email: string;
+    password: string;
+    name: string;
+}
+
+export interface CreateUserResponse {
+    email: string;
+    name: string;
+    access: string;
+}
 
 export const authApi = apiSlice.injectEndpoints({
     endpoints: builder => ({
@@ -38,10 +49,23 @@ export const authApi = apiSlice.injectEndpoints({
                 body: { ...body }
             }),
         }),
+        createUser: builder.mutation<ApiResponse<CreateUserResponse>, CreateUserBody>({
+            query: (body) => ({
+                url: '/auth/register/',
+                method: 'POST',
+                body: { ...body }
+            }),
+        }),
+        logout: builder.mutation<ApiResponse<void>, void>({
+            query: (body) => ({
+                url: '/auth/logout/',
+                method: 'GET'
+            })
+        }),
         refreshToken: builder.mutation<ApiResponse<JwtTokenObtainPair>, void>({
             query: () => ({
                 url: '/auth/refresh/',
-                method: 'POST',
+                method: 'GET',
             })
         }),
         totpCreate: builder.mutation<ApiResponse<TotpCreateCredentials>, void>({
@@ -60,4 +84,4 @@ export const authApi = apiSlice.injectEndpoints({
     })
 })
 
-export const { useLoginMutation, useRefreshTokenMutation, useTotpCreateMutation, useTotpVerifyMutation } = authApi;
+export const { useLoginMutation, useLogoutMutation, useRefreshTokenMutation, useTotpCreateMutation, useTotpVerifyMutation, useCreateUserMutation } = authApi;

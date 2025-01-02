@@ -39,12 +39,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
     'corsheaders',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     "authentication",
     "core",
     'django_otp',
-    'django_otp.plugins.otp_totp'
+    'django_otp.plugins.otp_totp',
+    "file_storage",
+    
 ]
 
 MIDDLEWARE = [
@@ -64,7 +68,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -126,6 +130,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+STATIC_ROOT = BASE_DIR / 'static'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -167,7 +174,9 @@ AUTH_USER_MODEL = 'authentication.User'
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"http://localhost:.*",
-    r"http://127.0.0.1:.*"
+    r"http://127.0.0.1:.*",
+    r"https://localhost:.*",
+    r"https://127.0.0.1:.*"
 ]
 CORS_ALLOW_METHODS = [
     "DELETE",
@@ -192,3 +201,18 @@ CORS_ALLOW_CREDENTIALS = True
 # Django OTP Settings
 OTP_TOTP_SECONDS = 30
 OTP_TOTP_DIGITS = 6
+
+import localstack_client.session as boto3
+import os
+if os.environ.get('AWS_CUSTOMER_MASTER_KEY_ID'):
+    AWS_CUSTOMER_MASTER_KEY_ID = os.environ.get('AWS_CUSTOMER_MASTER_KEY_ID')
+else:
+    os.environ['AWS_CUSTOMER_MASTER_KEY_ID'] = boto3.client('kms').create_key()["KeyMetadata"]["KeyId"]
+
+
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Optional security settings
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Image</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        img {
+            max-width: 100%;
+            max-height: 90vh;
+            margin-bottom: 20px;
+        }
+        .download-btn {
+            padding: 10px 20px;
+            background-color: #000000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .download-btn:hover {
+            background-color: #333333;
+        }
+    </style>
+    <script>
+        function downloadImage() {
+            // Get the base64 image data
+            const imgElement = document.querySelector('img');
+            const imgData = imgElement.src;
+            
+            // Create an anchor element and trigger download
+            const link = document.createElement('a');
+            link.href = imgData;
+            link.download = '{{ file_name }}'; // Use filename from template
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</head>
+<body>
+    <img src="data:image/*;base64,{{ base64_image }}" alt="Image">
+    <button class="download-btn" onclick="downloadImage()">Download Image</button>
+</body>
+</html>

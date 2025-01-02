@@ -16,11 +16,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from authentication.views import HelloWorld
+from file_storage.views import AutoCompleteUserView
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', HelloWorld.as_view(), name='hello'),
     path('api/v1/auth/', include('authentication.urls')),
+    path('api/v1/files/', include('file_storage.urls')),
+    path('api/v1/user/autocomplete/', AutoCompleteUserView.as_view(), name='autocomplete_user'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

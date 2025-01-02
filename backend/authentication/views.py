@@ -2,21 +2,20 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework import generics, status, mixins
 from authentication.models import User
-from authentication.serializers import UserSerializer, AuthTokenSerializer
+from authentication.serializers import UserSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from core.authentication import IsVerified
 from rest_framework.views import APIView
-from utils.response import success_response, error_response, redirect_response
+from utils.response import success_response, error_response
 from utils.totp_verification import TOTPVerificationUtils
-from time import sleep
 from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer, TokenObtainPairSerializer
 from rest_framework_simplejwt.exceptions import InvalidToken
 import jwt
 from django.conf import settings
-from core.constants import COOKIE_REFRESH_TOKEN_MAX_AGE, TOTP_REDIRECT_CLIENT_URL
-from django_otp import devices_for_user
-from django_otp.plugins.otp_totp.models import TOTPDevice
+from core.constants import COOKIE_REFRESH_TOKEN_MAX_AGE
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 class HelloWorld(APIView):
     def get(self, request, *args, **kwargs):
@@ -38,10 +37,16 @@ class TOTPCreateView(GenericAPIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         device = TOTPVerificationUtils.get_user_totp_device(user)
-        url = None
-        if not device:
-            device = user.totpdevice_set.create(confirmed=False)
-            url = device.config_url
+        verified_device = TOTPVerificationUtils.get_user_totp_device(user, confirmed=True)
+        
+        if verified_device:
+            return success_response(data={"url": None}, message="TOTP already verified", status_code=status.HTTP_200_OK)
+
+        if device is None:
+            device = TOTPVerificationUtils.create_totp_device(user)
+
+        url = device.config_url
+        
         return success_response(data={"url": url}, message="TOTP created", status_code=status.HTTP_200_OK)
 
 class TOTPVerifyView(GenericAPIView):
@@ -59,7 +64,7 @@ class TOTPVerifyView(GenericAPIView):
                 device.confirmed = True
                 device.save(update_fields=["confirmed"])
             
-            access_token = str(request.user.access(is_verified=True))
+            access_token = str(request.user.access(is_verified=True))   
             refresh_token = str(request.user.refresh(is_verified=True)) 
             data = {
                 "access": access_token,
@@ -74,6 +79,7 @@ class TOTPVerifyView(GenericAPIView):
 class CreateUserView(generics.GenericAPIView, mixins.CreateModelMixin):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         email = request.data.get("email", None)
@@ -87,7 +93,11 @@ class CookieTokenRefreshSerializer(TokenRefreshSerializer):
     refresh = None
     def validate(self, attrs):
         attrs['refresh'] = self.context['request'].COOKIES.get('refresh_token')
+        # Check if the token is blacklisted
         if attrs['refresh']:
+            blacklisted = RefreshToken(attrs['refresh']).check_blacklist()
+            if blacklisted:
+                raise InvalidToken('Token is')
             return super().validate(attrs)
         else:
             raise InvalidToken('No valid token found in cookie \'refresh_token\'')
@@ -111,7 +121,7 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         device = TOTPVerificationUtils.get_user_totp_device(request.user, confirmed=True)
 
         if response.data.get('refresh'):    
-            response.set_cookie('refresh_token', response.data['refresh'], max_age=COOKIE_REFRESH_TOKEN_MAX_AGE, httponly=True)
+            response.set_cookie('refresh_token', response.data['refresh'], max_age=COOKIE_REFRESH_TOKEN_MAX_AGE, httponly=True, secure=True)
             del response.data['refresh']
 
         return super().finalize_response(request, response, *args, **kwargs)
@@ -121,9 +131,6 @@ class CookieTokenRefreshView(TokenRefreshView):
     
     def get(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        if response.data.get('refresh'):
-            response.set_cookie('refresh_token', response.data['refresh'], max_age=COOKIE_REFRESH_TOKEN_MAX_AGE, httponly=True )
-            del response.data['refresh']
         
         # Add email to response data from the access token payload
         access_token = response.data.get('access', None)
@@ -132,3 +139,21 @@ class CookieTokenRefreshView(TokenRefreshView):
             response.data['email'] = payload['email']
 
         return response
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            refresh_token = request.COOKIES.get('refresh_token', None)
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+                response = success_response(data={}, message="Logout successful", status_code=status.HTTP_200_OK)
+                response.delete_cookie('refresh_token')
+                return response
+            else:
+                return error_response(data={}, message="No refresh token found", status_code=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return error_response(data={}, message=f"{e}", status_code=status.HTTP_400_BAD_REQUEST)

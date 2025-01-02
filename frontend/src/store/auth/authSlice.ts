@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { RootState } from "@/store";
+import { authApi } from "@/api/routes/auth";
 
 interface AuthState {
     user: any;
@@ -13,17 +14,25 @@ const authSlice = createSlice({
         setCredentials: (state, action) => {
             state.user = action.payload.user;
             state.accessToken = action.payload.accessToken;
-            // set user in local storage
-            if(state.user) {
+            if (state.user) {
                 localStorage.setItem("user", JSON.stringify(state.user));
             }
         },
         logOut: (state) => {
             state.user = null;
             state.accessToken = null;
-            // remove user from local storage
             localStorage.removeItem("user");
-        }
+        },
+    },
+    extraReducers: (builder) => {
+        builder.addMatcher(
+            authApi.endpoints.logout.matchFulfilled,
+            (state) => {
+                state.user = null;
+                state.accessToken = null;
+                localStorage.removeItem("user");
+            }
+        );
     },
 });
 
