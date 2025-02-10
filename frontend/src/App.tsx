@@ -1,19 +1,37 @@
+// App.jsx
+import React, { Suspense, lazy } from 'react';
+import { Provider } from 'react-redux';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { store } from '@/store';
 import './App.css';
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
-import LoginPage from '@pages/Login/LoginPage';
-import HomePage from '@pages/Home/HomePage';
-import RequireAuth from '@/components/requireAuth';
+import Loader from "@/components/Loader";
+
+// Import non-lazy components
 import Layout from './components/Layout';
-import { Provider } from 'react-redux';
-import RegistrationPage from './pages/Login/RegisterPage';
-import TotpPage from './pages/Login/TotpPage';
+import RequireAuth from '@/components/requireAuth';
 import IsVerified from '@/components/isVerified';
 
+// Lazy-loaded components
+const LoginPage = lazy(() => import('@pages/Login/LoginPage'));
+const HomePage = lazy(() => import('@pages/Home/HomePage'));
+const RegistrationPage = lazy(() => import('./pages/Login/RegisterPage'));
+const TotpPage = lazy(() => import('./pages/Login/TotpPage'));
+const DecryptFile = lazy(() => import('./pages/Home/DecryptFile'));
+// Fallback component for loading state
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-screen">
+    <Loader />
+  </div>
+);
+
+// Define the router with lazy-loaded components
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Layout />,
+    element: (
+        <Layout />
+    ),
     children: [
       {
         index: true,
@@ -24,15 +42,27 @@ const router = createBrowserRouter([
         children: [
           {
             path: '/login',
-            element: <LoginPage />,
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <LoginPage />
+              </Suspense>
+            ),
           },
           {
             path: '/register',
-            element: <RegistrationPage />,
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <RegistrationPage />
+              </Suspense>
+            ),
           },
           {
             path: '/totp',
-            element: <TotpPage />,
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <TotpPage />
+              </Suspense>
+            ),
           },
         ],
       },
@@ -41,18 +71,32 @@ const router = createBrowserRouter([
         children: [
           {
             path: '/home',
-            element: <HomePage />,
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <HomePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/decrypt-file',
+            element: (
+              <Suspense fallback={<LoadingFallback />}>
+                <DecryptFile />
+              </Suspense>
+            ),
           },
         ],
       },
     ],
   },
 ]);
-
 function App() {
   return (
     <Provider store={store}>
-      <RouterProvider router={router} />
+      <Toaster />
+      <Suspense fallback={<LoadingFallback />}>
+        <RouterProvider router={router} />
+      </Suspense>
     </Provider>
   );
 }

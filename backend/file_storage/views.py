@@ -13,20 +13,41 @@ from django.http import FileResponse
 from authentication.models import User
 from core.authentication import CustomJWTAuthenticationForShareableLink, IsVerifiedForShareableLink
 from core.constants import PERMISSION_CHOICES
-import io
 import base64
 import os
-from django.conf import settings
+from rest_framework.pagination import PageNumberPagination
+
+class ListViewPagination(PageNumberPagination):
+    page_size = 10
+    ordering = "id"
 
 class ListUserFilesView(GenericAPIView, ListModelMixin):
     permission_classes = [IsVerified]   
     serializer_class = ListFileStorageSerializer
+    pagination_class = ListViewPagination
 
     def get_queryset(self):
-        return FileStorage.objects.filter(user=self.request.user)
+        search = self.request.query_params.get('search', None)
+        files = FileStorage.objects.filter(user=self.request.user)
+        if search: 
+            files = files.filter(file_name__icontains=search)
+        # Order by id for cursor pagination
+        return files
     
     def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
+        
+        # Get the queryset
+        queryset = self.get_queryset()
+        
+        # Get paginated results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # If pagination is disabled, return all results
+        serializer = self.get_serializer(queryset, many=True)
+        return success_response(serializer.data)
 
 class UploadUserFileView(GenericAPIView, CreateModelMixin):
     serializer_class = FileStorageSerializer
@@ -68,7 +89,68 @@ class UploadUserFileView(GenericAPIView, CreateModelMixin):
             serializer.save()
             return success_response(serializer.data, message="File uploaded successfully", status_code=201)
         return error_response(serializer.errors, message="Invalid data provided", status_code=400)
+
+
+class BulkUploadUserFileView(GenericAPIView, CreateModelMixin):
+    serializer_class = FileStorageSerializer
+    permission_classes = [IsVerified]
+    parser_classes = (MultiPartParser, FormParser)
     
+    def post(self, request, *args, **kwargs):
+        files = request.FILES.getlist('file')
+        
+        encrypted_keys_data = request.data.get("encrypted_key").strip("[]").split(",")
+        encrypted_keys = [key.replace('"', '') for key in encrypted_keys_data]
+
+        file_names_data = request.data.get("file_name").strip("[]").split(",")
+        file_names = [name.replace('"', '') for name in file_names_data]
+
+
+        if not files:
+            return error_response({'error': 'No file provided'}, message="Please provide a file", status_code=400)
+        
+        if not encrypted_keys:
+            return error_response({'error': 'No encrypted key provided'}, message="Please provide an encrypted key", status_code=400)
+        
+        if not file_names:
+            return error_response({'error': 'No file name provided'}, message="Please provide a file name", status_code=400)
+        
+       
+        if len(files) != len(encrypted_keys) or len(files) != len(file_names):
+            return error_response({'error': 'Number of files, encrypted keys and file names must be equal'}, message="Number of files, encrypted keys and file names must be equal", status_code=400)
+
+        payload = []
+
+        for i in range(len(files)):
+            file = files[i]
+            encrypted_key = encrypted_keys[i]
+            file_name = file_names[i]
+
+            # Encrypt the dek received from the client
+            try:
+                encrypted_key = EncryptService.encrypt_data_cmk(encrypted_key)
+            except Exception as e:
+                return error_response({'error': 'Failed to encrypt the key ' + str(e)}, message=f"Failed to encrypt the key {str(e)}", status_code=400)
+            
+            if encrypted_key == None:
+                return error_response({'error': 'Failed to encrypt the key'}, message="Failed to encrypt the key", status_code=400)
+            
+            data = {
+                'file_name': file_name,
+                'encrypted_file': file,
+                'encrypted_key': encrypted_key
+            }
+
+            payload.append(data)
+            
+        serializer = self.get_serializer(data=payload, many=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return success_response(serializer.data, message="Files uploaded successfully", status_code=201)
+        return error_response(serializer.errors, message="Invalid data provided", status_code=400)
+    
+
 class UserFileView(GenericAPIView, DestroyModelMixin):
     permission_classes = [IsVerifiedForShareableLink]
     authentication_classes = [CustomJWTAuthenticationForShareableLink]

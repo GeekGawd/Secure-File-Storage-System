@@ -3,7 +3,7 @@ import type { RootState } from "@/store";
 import { authApi } from "@/api/routes/auth";
 
 interface AuthState {
-    user: any;
+    user: string;
     accessToken: string;
 }
 

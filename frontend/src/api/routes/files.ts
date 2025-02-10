@@ -9,6 +9,13 @@ export interface ListFilesResponse {
     global_permission_type: string;
 }
 
+export interface PaginatedListFilesResponse {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: ListFilesResponse[];
+}
+
 export interface UploadFileFormData {
     file: File;
     file_name: string;
@@ -70,22 +77,41 @@ export interface GlobalPermissionUpdateResponse {
 
 export const filesApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
-        listFiles: builder.query<ApiResponse<ListFilesResponse[]>, void>({
-            query: () => '/files/user/list/',
+        // listFiles: builder.query<ApiResponse<ListFilesResponse[]>, void>({
+        //     query: () => '/files/user/list/',
+        // }),
+        listFiles: builder.query<ApiResponse<PaginatedListFilesResponse>, { page?: string, search?: string }>({
+            query: ({ page = '', search = '' }) => {
+                const params = new URLSearchParams();
+                if (page) params.append('page', page);
+                if (search) params.append('search', search);
+                return `/files/user/list/${params.toString() ? `?${params.toString()}` : ''}`;
+            },
+            // Disable caching for this query
+            providesTags: (result) => result
+                ? [
+                    ...result.data.results.map(({ external_id }) => ({ type: 'Files' as const, id: external_id })),
+                    { type: 'Files' as const, id: 'LIST' },
+                ]
+                : [{ type: 'Files' as const, id: 'LIST' }]
         }),
         uploadFile: builder.mutation<ApiResponse<ListFilesResponse>, FormData>({
-            query: (formData) => ({
-                url: '/files/user/',
-                method: 'POST',
-                body: formData,
-                formData: true  
-            }),
+            query: (formData) => {
+                return {
+                    url: '/files/user/',
+                    method: 'POST',
+                    body: formData,
+                    formData: true,
+                };
+            },
+            invalidatesTags: [{ type: 'Files' as const, id: 'LIST' }],
         }),
         deleteFile: builder.mutation<ApiResponse<void>, string>({
             query: (externalId) => ({
                 url: `/files/user/${externalId}/`,
                 method: 'DELETE',
             }),
+            invalidatesTags: [{ type: 'Files' as const, id: 'LIST'}],
         }),
         createShareLink: builder.mutation<ApiResponse<ShareLinkResponse>, ShareLinkCreateBody>({
             query: (data) => ({
@@ -122,8 +148,17 @@ export const filesApi = apiSlice.injectEndpoints({
                 body: { global_permission_type: data.global_permission_type },
             }),
         }),
+        bulkUploadFiles: builder.mutation<ApiResponse<ListFilesResponse[]>, FormData>({
+            query: (formData) => ({
+                url: '/files/user/bulk/',
+                method: 'POST',
+                body: formData,
+                formData: true
+            }),
+            invalidatesTags: [{ type: 'Files' as const, id: 'LIST' }]
+        }),
     }),
 });
 
 export const { useListFilesQuery, useUploadFileMutation, useCreateShareLinkMutation, useUserAutocompleteQuery, 
-    useFileUserPermissionListQuery, useFileUserPermissionCreateUpdateMutation, useFileUserPermissionDeleteMutation, useUpdateGlobalPermissionMutation, useDeleteFileMutation } = filesApi;
+    useFileUserPermissionListQuery, useFileUserPermissionCreateUpdateMutation, useFileUserPermissionDeleteMutation, useUpdateGlobalPermissionMutation, useDeleteFileMutation, useBulkUploadFilesMutation } = filesApi;

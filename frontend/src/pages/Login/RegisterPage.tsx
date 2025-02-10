@@ -33,6 +33,19 @@ export default function RegistrationPage() {
   const [createUser, { isLoading, isError, error: createUserError }] = useCreateUserMutation()
   const navigate = useNavigate()
 
+  const handleEmailBlur = () => {
+    // Clear any existing email error before validating
+    setError('')
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    
+    if (!emailRegex.test(email) && email !== '') {
+      setError('Please enter a valid email address.')
+    }
+
+  }
+
   const handlePasswordBlur = () => {
     // Clear any existing password error before validating
     setPasswordError('')
@@ -121,6 +134,7 @@ export default function RegistrationPage() {
                 placeholder="example@gmail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={handleEmailBlur}
                 required
               />
             </div>

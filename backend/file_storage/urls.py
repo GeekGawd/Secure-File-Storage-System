@@ -1,8 +1,9 @@
 from django.urls import path
-from file_storage.views import UploadUserFileView, ListUserFilesView, ShareableLinkView, ListFilePermissionsView, FilePermissionView, ShareableLinkCreateView, GlobalPermissionView, UserFileView
+from file_storage.views import UploadUserFileView, ListUserFilesView, ShareableLinkView, ListFilePermissionsView, FilePermissionView, ShareableLinkCreateView, GlobalPermissionView, UserFileView, BulkUploadUserFileView
 urlpatterns = [
     path('user/list/', ListUserFilesView.as_view(), name='user_files_list'),
     path('user/', UploadUserFileView.as_view(), name='user_files'),
+    path('user/bulk/', BulkUploadUserFileView.as_view(), name='user_files_bulk'),
     path('user/share/', ShareableLinkCreateView.as_view(), name='share_link_create'),
     path('user/global/<str:file_id>/', GlobalPermissionView.as_view(), name='global_permission_file'),
     path('user/<str:file_id>/', UserFileView.as_view(), name='user_file'),

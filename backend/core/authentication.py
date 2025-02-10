@@ -6,6 +6,7 @@ from authentication.models import User
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import BasePermission
 from rest_framework_simplejwt.tokens import RefreshToken
+from file_storage.models import ShareableLink
 
 class IsVerified(BasePermission):
     """
@@ -53,6 +54,14 @@ class CustomJWTAuthentication(JWTAuthentication):
 class IsVerifiedForShareableLink(BasePermission):
     def has_permission(self, request, view):
         token = request.COOKIES.get('refresh_token', None)
+
+        file_external_id = view.kwargs.get('external_id')
+
+        if file_external_id:
+            file_all_user_permission = ShareableLink.objects.get(external_id=file_external_id).all_user_permission
+
+            if file_all_user_permission == True:
+                return True
 
         if not token:
             return False

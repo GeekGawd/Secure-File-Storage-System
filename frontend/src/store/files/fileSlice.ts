@@ -10,8 +10,8 @@ const fileSlice = createSlice({
     name: "files",
     initialState: {} as FileState,
     reducers: {
-        setFiles: (state, action: PayloadAction<ListFilesResponse[]>) => {
-            state.files = action.payload;
+        setFiles: (state, action: PayloadAction<{files: ListFilesResponse[]}>) => {
+            state.files = action.payload.files;
         },
         setGlobalPermissionType: (state, action: PayloadAction<{ fileId: string, globalPermissionType: PermissionType }>) => {
             const { fileId, globalPermissionType } = action.payload;

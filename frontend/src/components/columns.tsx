@@ -17,6 +17,7 @@ import { ManageAccess } from "@/components/ManageAccess"
 import { BASE_URL } from "@/api";
 import { useDeleteFileMutation } from "@/api/routes/files";
 import toast from "react-hot-toast"
+import { useSearchParams, useNavigate } from "react-router";
 
 export const columns: ColumnDef<ListFilesResponse>[] = [
   {
@@ -49,11 +50,18 @@ export const columns: ColumnDef<ListFilesResponse>[] = [
       const encryptedFileUrl = BASE_URL + "/files/user/" + file.external_id;
       const [showManageAccessDialog, setShowManageAccessDialog] = useState(false)
       const [deleteFile] = useDeleteFileMutation();
-      const { refetch } = useListFilesQuery();
+      const [searchParams, setSearchParams] = useSearchParams();
+      const [currentPage, setCurrentPage] = useState(() => {
+        const page = searchParams.get('page');
+        return page || "";
+      });
+      const { refetch } = useListFilesQuery({page: currentPage});
+      
+      const navigate = useNavigate();
       const handleDeleteFile = async (externalId: string) => {
         await deleteFile(externalId).unwrap();
         toast.success("File deleted successfully");
-        // refetch the files
+
         refetch();
       };
       return (

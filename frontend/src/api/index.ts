@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { RootState } from '@/store';
 import { logOut, setCredentials, selectCurrentAccessToken } from '@/store/auth/authSlice';
+import { toast } from 'react-hot-toast';
 
 export const BASE_URL = 'https://localhost:8000/api/v1';
 
@@ -22,6 +23,12 @@ const baseQuery = fetchBaseQuery({
 const baseQueryPrivate = async (args, api, extraOptions) => {
     // Send query to server
     let result = await baseQuery(args, api, extraOptions);
+    
+    // Add a global error toast for 400 errors
+    if(result?.error?.status === 400) {
+        const errorMessage = (result.error.data as Record<string, any>)?.message || "Unknown error occurred";
+        toast.error(errorMessage);
+    }   
 
     // If the query returns a 401, we need to refresh the token
     if(result?.error?.status === 401) {
@@ -45,6 +52,8 @@ const baseQueryPrivate = async (args, api, extraOptions) => {
 
 export const apiSlice = createApi({
     baseQuery: baseQueryPrivate,
+    tagTypes: ['Files'],
+    refetchOnMountOrArgChange: 0,
     endpoints: () => ({})
 })
 

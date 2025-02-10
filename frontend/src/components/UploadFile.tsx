@@ -1,48 +1,65 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { X } from "lucide-react"
-import { useUploadFileMutation, UploadFileFormData } from "@/api/routes/files"
+import { useBulkUploadFilesMutation } from "@/api/routes/files"
 import EnvelopeEncryptionService from "@/utils/encrypt_file";
-import { toast } from "react-hot-toast";
 import { Spinner } from "@/components/ui/spinner";
-import { selectCurrentAccessToken } from "@/store/auth/authSlice"
-import { useSelector } from "react-redux"
+
 
 export function UploadFile({ onUploadSuccess }: { onUploadSuccess: () => void }) {
     const [fileName, setFileName] = useState("")
     const [isDragging, setIsDragging] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
-    const dropZoneRef = useRef<HTMLDivElement>(null)
+    const [files, setFiles] = useState<Array<File> | null>();
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const inputRef = useRef<HTMLInputElement>(null);
-    const [uploadFileMutation, { isLoading, isError }] = useUploadFileMutation();
+    const [uploadFileMutation, { isLoading, isError, isSuccess }] = useBulkUploadFilesMutation();
     const encryptionService = new EnvelopeEncryptionService();
 
+    const uploadFile = async (files: File[]) => {
+        
+        // Encrypt each file and prepare data
+        const encryptedFiles = await Promise.all(files.map(async (file) => {
+            const { encryptedBlob, dek } = await encryptionService.encrypt(file);
+            return { encryptedBlob, dek, name: file.name };
+        }));
+
+        // Create FormData with arrays of files and their corresponding data
+        const formData = new FormData();
+        
+        // Append each encrypted file
+        encryptedFiles.forEach(({ encryptedBlob }) => {
+            formData.append('file', encryptedBlob);
+        });
+
+        // Append encrypted keys as JSON string
+        formData.append('encrypted_key', JSON.stringify(encryptedFiles.map(f => f.dek)));
+        
+        // Append file names as JSON string
+        formData.append('file_name', JSON.stringify(encryptedFiles.map(f => f.name)));
+
+        try {
+            await uploadFileMutation(formData);
+        } catch (error) {
+            console.error("Error uploading files:", error);
+        }
+    }
+
+    useEffect(() => {
+        if (isSuccess) {
+            setIsOpen(false);
+            onUploadSuccess?.();
+        }
+    }, [isSuccess]);
+
     const handleUploadFile = async () => {
-        if (!fileInputRef.current?.files?.[0]) {
+        if (!files) {
             console.error("No file selected");
             return;
         }
-        const file = fileInputRef.current.files[0];
 
-        const { encryptedBlob, dek } = await encryptionService.encrypt(file);
-
-        // Convert Blob to base64
-        const formData = new FormData();
-
-        formData.append('file', encryptedBlob);
-        formData.append('file_name', fileName);
-        formData.append('encrypted_key', dek);
-
-        try {
-            const response = await uploadFileMutation(formData).unwrap();
-            setIsOpen(false);
-            onUploadSuccess?.();
-        } catch (error) {
-            console.error("Error uploading file:", error);
-        }
+        uploadFile(files);
     }
 
     const handleDragEnter = (e: React.DragEvent) => {
@@ -62,27 +79,46 @@ export function UploadFile({ onUploadSuccess }: { onUploadSuccess: () => void })
         e.stopPropagation()
     }
 
-    const handleDrop = (e: React.DragEvent) => {
+const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
         setIsDragging(false)
 
-        const file = e.dataTransfer.files?.[0]
-        if (file) {
-            setFileName(file.name)
+        const fileList = e.dataTransfer.files;
+        const files = Array.from(fileList);
+        if (files) {
+            let fileNames = ""
+            for (const file of files){
+                fileNames += file.name + ", ";
+            }
+            setFileName(fileNames)
+            setFiles(files)
         }
     }
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        if (file) {
-            setFileName(file.name)
+        const fileList = event.target.files;
+        const files = Array.from(fileList);
+
+        if (files) {
+            let fileNames = ""
+            for (const file of files){
+                fileNames += file.name + ", ";
+            }
+            setFileName(fileNames)
+            setFiles(files)
         }
     }
 
     const handleSelectAreaClick = () => {
         fileInputRef.current?.click();
     };
+
+    const handleClose = () => {
+        setIsOpen(false)
+        setFileName("")
+        setFiles(null)
+    }
 
     return (
         <>
@@ -93,11 +129,6 @@ export function UploadFile({ onUploadSuccess }: { onUploadSuccess: () => void })
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 transition-opacity">
                     <div
-                        ref={dropZoneRef}
-                        onDragEnter={handleDragEnter}
-                        onDragLeave={handleDragLeave}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
                         className={`relative w-full max-w-md p-6 bg-white rounded-lg shadow-lg transition-transform transform ${
                             isDragging ? "scale-105 border-2 border-black" : "border border-gray-400"
                         } `}
@@ -106,13 +137,17 @@ export function UploadFile({ onUploadSuccess }: { onUploadSuccess: () => void })
                         <button
                             type="button"
                             className="absolute top-1 right-1 text-black hover:text-gray-800"
-                            onClick={() => setIsOpen(false)}
+                            onClick={ handleClose }
                         >
                             <X className="h-5 w-5" />
                         </button>
 
                         {/* Selectable Area with Dotted Border */}
                         <div
+                            onDragEnter={handleDragEnter}
+                            onDragLeave={handleDragLeave}
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop}
                             onClick={handleSelectAreaClick}
                             className={`flex flex-col items-center justify-center py-4 border-2 border-dashed border-gray-600 rounded-md cursor-pointer`}
                         >
@@ -148,7 +183,6 @@ export function UploadFile({ onUploadSuccess }: { onUploadSuccess: () => void })
                                 onChange={(e) => setFileName(e.target.value)}
                                 placeholder="Enter file name"
                                 className="mt-1 block w-full px-3 py-2 border border-gray-400 rounded-md shadow-sm focus:outline-none focus:ring-gray-800 focus:border-gray-800"
-                                ref={inputRef}
                             />
                         </div>
 
@@ -159,13 +193,14 @@ export function UploadFile({ onUploadSuccess }: { onUploadSuccess: () => void })
                             onChange={handleFileChange}
                             id="fileInput"
                             ref={fileInputRef}
+                            multiple
                         />
 
                         {/* Action Buttons */}
                         <div className="mt-6 flex justify-end space-x-3">
                             <Button
                                 variant="secondary"
-                                onClick={() => setIsOpen(false)}
+                                onClick={ handleClose }
                                 className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-black"
                             >
                                 Cancel

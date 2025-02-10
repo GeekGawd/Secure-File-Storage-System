@@ -1,5 +1,10 @@
-class EnvelopeEncryptionService {
-    private webCrypto = window.crypto;
+export interface EncryptFileServiceInterface {
+  encrypt(file: File): Promise<{ dek: string; encryptedBlob: Blob }>;
+  decrypt(dek: string, encryptedFile: File): Promise<Uint8Array>;
+}
+
+class EnvelopeEncryptionService implements EncryptFileServiceInterface {
+    private webCrypto = window.crypto;  
 
     public arrayBufferToBase64(buffer: ArrayBuffer): string {
       const bytes = new Uint8Array(buffer);
